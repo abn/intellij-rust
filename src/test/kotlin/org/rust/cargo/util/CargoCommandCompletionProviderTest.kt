@@ -117,6 +117,11 @@ class CargoCommandCompletionProviderTest : RsTestBase() {
         listOf("foo", "quux")
     )
 
+    fun `test suggest target triple`() = checkCompletion(
+        "build --target ",
+        listOf()
+    )
+
     fun `test suggest bin argument`() = checkCompletion(
         "run --bin ",
         listOf("bar", "baz")
