@@ -174,10 +174,10 @@ val RsMacroCall.expansionFlatten: List<RsExpandedElement>
         return list
     }
 
-fun RsMacroCall.expandMacrosRecursively(
+fun RsPossibleMacroCall.expandMacrosRecursively(
     depthLimit: Int = DEFAULT_RECURSION_LIMIT,
     replaceDollarCrate: Boolean = true,
-    expander: (RsMacroCall) -> MacroExpansion? = RsMacroCall::expansion
+    expander: (RsPossibleMacroCall) -> MacroExpansion? = RsPossibleMacroCall::expansion
 ): String {
     if (depthLimit == 0) return text
 
