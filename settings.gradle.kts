@@ -16,3 +16,12 @@ include(
     "ml-completion",
     "intellij-toml"
 )
+
+// Configure Gradle Build Cache. It is enabled in `gradle.properties` via `org.gradle.caching`.
+buildCache {
+    local {
+        isEnabled = System.getenv("CI") == null
+        directory = File(rootDir, "build/build-cache")
+        removeUnusedEntriesAfterDays = 30
+    }
+}
