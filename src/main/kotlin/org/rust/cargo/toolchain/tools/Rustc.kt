@@ -9,6 +9,7 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapiext.isUnitTestMode
+import org.jetbrains.annotations.TestOnly
 import org.rust.cargo.CfgOptions
 import org.rust.cargo.toolchain.RsToolchain
 import org.rust.cargo.toolchain.RsToolchain.Companion.RUSTC_BOOTSTRAP
@@ -56,10 +57,16 @@ class Rustc(toolchain: RsToolchain) : RustupComponent(NAME, toolchain) {
         return fs.refreshAndFindFileByPath(stdlibPath)
     }
 
-    private fun getRawCfgOption(projectDirectory: Path?): List<String>? {
+    private fun getRawCfgOption(projectDirectory: Path?, target: String?): List<String>? {
         val timeoutMs = 10000
+        val parameters = mutableListOf("--print", "cfg")
+        if (target != null) {
+            parameters += "--target"
+            parameters += target
+        }
+
         val output = createBaseCommandLine(
-            "--print", "cfg",
+            parameters,
             workingDirectory = projectDirectory,
         ).withEnvironment(RUSTC_BOOTSTRAP, "1").execute(timeoutMs)
         return if (output?.isSuccess == true) output.stdoutLines else null
@@ -71,12 +78,44 @@ class Rustc(toolchain: RsToolchain) : RustupComponent(NAME, toolchain) {
         // the package by passing e.g. `--lib` or `--bin NAME` to specify a single target
         // Running "cargo rustc --bin=projectname  -- --print cfg" we can get around this
         // but it also compiles the whole project, which is probably not wanted
-        // TODO: This does not query the target specific cfg flags during cross compilation :-(
-        val rawCfgOptions = getRawCfgOption(projectDirectory) ?: emptyList()
-        return CfgOptions.parse(rawCfgOptions)
+
+        val buildTarget = getCustomBuildTarget()
+
+        var rawCfgOptions = getRawCfgOption(projectDirectory, buildTarget)
+        if (rawCfgOptions == null && buildTarget != null) {
+            rawCfgOptions = getRawCfgOption(projectDirectory, null)
+        }
+
+        return CfgOptions.parse(rawCfgOptions.orEmpty())
     }
 
     companion object {
         const val NAME: String = "rustc"
     }
 }
+
+fun getCustomBuildTarget(): String? {
+    var target: String? = null
+    if (isUnitTestMode) {
+        target = MOCK
+    }
+    if (target == null) {
+        // An initial attempt to retrieve a target specific cfg
+        // TODO: extract cargo config info via cargo
+        // https://github.com/rust-lang/cargo/issues/9342
+        target = System.getenv("CARGO_BUILD_TARGET")
+    }
+    return target
+}
+
+@TestOnly
+fun withMockBuildTarget(target: String, action: () -> Unit) {
+    MOCK = target
+    try {
+        action()
+    } finally {
+        MOCK = null
+    }
+}
+
+private var MOCK: String? = null
