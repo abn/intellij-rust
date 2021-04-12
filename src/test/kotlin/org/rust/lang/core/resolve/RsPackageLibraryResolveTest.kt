@@ -515,7 +515,7 @@ class RsPackageLibraryResolveTest : RsResolveTestBase() {
 
     @UseNewResolve
     @MockEdition(CargoWorkspace.Edition.EDITION_2018)
-    fun `test import macro 2 by qualified path`() = stubOnlyResolve("""
+    fun `test macro reexported as macro 2 (qualified path)`() = stubOnlyResolve("""
     //- lib.rs
         fn bar() {
             dep_lib_target::foo!();
@@ -524,6 +524,28 @@ class RsPackageLibraryResolveTest : RsResolveTestBase() {
         #[macro_export]
         macro_rules! foo_ { () => {}; }
         pub use foo_ as foo;
+    """)
+
+    @UseNewResolve
+    @MockEdition(CargoWorkspace.Edition.EDITION_2018)
+    fun `test macro 2 (qualified path)`() = stubOnlyResolve("""
+    //- main.rs
+        test_package::foo!();
+                    //^ lib.rs
+    //- lib.rs
+        pub macro foo() {}
+    """)
+
+    @UseNewResolve
+    @MockEdition(CargoWorkspace.Edition.EDITION_2018)
+    fun `test macro 2 (import)`() = stubOnlyResolve("""
+    //- main.rs
+        use test_package::foo;
+        fn main() {
+            foo!();
+        } //^ lib.rs
+    //- lib.rs
+        pub macro foo() {}
     """)
 
     fun `test import from crate root without 'pub' vis`() = stubOnlyResolve("""

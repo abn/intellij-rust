@@ -61,7 +61,7 @@ val RsItemsOwner.expandedItemsCached: RsCachedItems
     get() = CachedValuesManager.getCachedValue(this, EXPANDED_ITEMS_KEY) {
         val namedImports = SmartList<CachedNamedImport>()
         val starImports = SmartList<CachedStarImport>()
-        val macros = SmartList<RsMacro>()
+        val macros = SmartList<RsMacroDefinitionBase>()
         val namedCfgEnabled: MutableMap<String, SmartList<RsItemElement>> = THashMap()
         val namedCfgDisabled: MutableMap<String, SmartList<RsItemElement>> = THashMap()
         processExpandedItemsInternal { it, isEnabledByCfgSelf ->
@@ -85,7 +85,7 @@ val RsItemsOwner.expandedItemsCached: RsCachedItems
                     }
                 }
 
-                isEnabledByCfgSelf && it is RsMacro -> macros.add(it)
+                isEnabledByCfgSelf && it is RsMacroDefinitionBase -> macros.add(it)
 
                 it is RsItemElement -> {
                     val named = if (isEnabledByCfgSelf) namedCfgEnabled else namedCfgDisabled
@@ -129,7 +129,7 @@ val RsItemsOwner.expandedItemsCached: RsCachedItems
 class RsCachedItems(
     val namedImports: List<CachedNamedImport>,
     val starImports: List<CachedStarImport>,
-    val macros: List<RsMacro>,
+    val macros: List<RsMacroDefinitionBase>,
     val named: Map<String, List<RsItemElement>>,
     val namedCfgDisabled: Map<String, List<RsItemElement>>,
 ) {
@@ -141,6 +141,9 @@ class RsCachedItems(
     )
 
     data class CachedStarImport(val isPublic: Boolean, val speck: RsUseSpeck)
+
+    val legacyMacros: List<RsMacro> get() = macros.filterIsInstance<RsMacro>()
+    val macros2: List<RsMacro2> get() = macros.filterIsInstance<RsMacro2>()
 }
 
 private fun RsItemsOwner.processExpandedItemsInternal(processor: (RsElement, Boolean) -> Boolean): Boolean {

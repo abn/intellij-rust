@@ -436,9 +436,13 @@ private fun VisItem.scopedMacroToPsi(defMap: CrateDefMap, project: Project): RsN
 
 private fun VisItem.scopedMacroToPsi(containingMod: RsMod): RsNamedElement? {
     val items = containingMod.expandedItemsCached
-    val macros = items.macros
+    val macros = items.legacyMacros
         .filter { it.name == name && matchesIsEnabledByCfg(it, this) }
     if (macros.isNotEmpty()) return macros.singlePublicOrFirst()
+
+    items.macros2
+        .singleOrNull { it.name == name && matchesIsEnabledByCfg(it, this) }
+        ?.let { return it }
 
     return items.named.values
         .flatten()
@@ -450,7 +454,7 @@ private fun VisItem.scopedMacroToPsi(containingMod: RsMod): RsNamedElement? {
 
 private fun DeclMacroDefInfo.legacyMacroToPsi(containingMod: RsMod, defMap: CrateDefMap): RsMacro? {
     val items = containingMod.expandedItemsCached
-    return items.macros.singleOrNull {
+    return items.legacyMacros.singleOrNull {
         val defIndex = getMacroIndex(it, defMap) ?: return@singleOrNull false
         MacroIndex.equals(defIndex, macroIndex)
     }
