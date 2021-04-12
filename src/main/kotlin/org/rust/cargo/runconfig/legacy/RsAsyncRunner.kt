@@ -25,16 +25,18 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.concurrency.Promise
-import org.rust.cargo.runconfig.*
+import org.rust.cargo.runconfig.BuildResult
+import org.rust.cargo.runconfig.CargoRunStateBase
 import org.rust.cargo.runconfig.buildtool.CargoBuildManager.getBuildConfiguration
 import org.rust.cargo.runconfig.buildtool.CargoBuildManager.isBuildConfiguration
 import org.rust.cargo.runconfig.buildtool.CargoBuildManager.isBuildToolWindowEnabled
 import org.rust.cargo.runconfig.command.CargoCommandConfiguration
+import org.rust.cargo.runconfig.createFilters
+import org.rust.cargo.runconfig.executeCommandLine
 import org.rust.cargo.toolchain.CargoCommandLine
 import org.rust.cargo.toolchain.impl.CargoMetadata
 import org.rust.cargo.toolchain.impl.CompilerArtifactMessage
 import org.rust.cargo.toolchain.tools.Cargo.Companion.getCargoCommonPatch
-import org.rust.cargo.toolchain.tools.RsTool.Companion.createGeneralCommandLine
 import org.rust.cargo.util.CargoArgsParser.Companion.parseArgs
 import org.rust.openapiext.JsonUtils.tryParseJsonObject
 import org.rust.openapiext.saveAllDocuments
@@ -74,14 +76,15 @@ abstract class RsAsyncRunner(
 
         val getRunCommand = { executablePath: Path ->
             with(commandLine) {
-                createGeneralCommandLine(
+                state.toolchain.createGeneralCommandLine(
                     executablePath,
                     workingDirectory,
                     redirectInputFrom,
                     backtraceMode,
                     environmentVariables,
                     executableArguments,
-                    emulateTerminal
+                    emulateTerminal,
+                    patchToRemote = false
                 )
             }
         }
@@ -109,7 +112,7 @@ abstract class RsAsyncRunner(
 
     open fun checkToolchainConfigured(project: Project): Boolean = true
 
-    open fun checkToolchainSupported(host: String): BuildResult.ToolchainError? = null
+    open fun checkToolchainSupported(project: Project, host: String): BuildResult.ToolchainError? = null
 
     open fun processUnsupportedToolchain(
         project: Project,
@@ -127,10 +130,11 @@ abstract class RsAsyncRunner(
         isTestBuild: Boolean
     ): Promise<Binary?> {
         val promise = AsyncPromise<Binary?>()
+        val toolchain = state.toolchain
         val cargo = state.cargo()
 
         val processForUserOutput = ProcessOutput()
-        val processForUser = RsKillableColoredProcessHandler(cargo.toColoredCommandLine(project, command))
+        val processForUser = toolchain.startProcess(cargo.toColoredCommandLine(project, command))
 
         processForUser.addProcessListener(CapturingProcessAdapter(processForUserOutput))
 
@@ -154,7 +158,7 @@ abstract class RsAsyncRunner(
                         override fun run(indicator: ProgressIndicator) {
                             indicator.isIndeterminate = true
                             val host = state.rustVersion()?.host.orEmpty()
-                            result = checkToolchainSupported(host)
+                            result = checkToolchainSupported(project, host)
                             if (result != null) return
 
                             val processForJson = CapturingProcessHandler(

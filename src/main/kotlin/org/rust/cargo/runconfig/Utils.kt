@@ -126,8 +126,11 @@ sealed class BuildResult {
         // TODO: move into bundle
         object UnsupportedMSVC : ToolchainError("MSVC toolchain is not supported. Please use GNU toolchain.")
         object UnsupportedGNU : ToolchainError("GNU toolchain is not supported. Please use MSVC toolchain.")
-        object MSVCWithRustGNU : ToolchainError("MSVC debugger cannot be used with GNU Rust toolchain")
-        object GNUWithRustMSVC : ToolchainError("GNU debugger cannot be used with MSVC Rust toolchain")
+        object UnsupportedWSL : ToolchainError("WSL toolchain is not supported.")
+        object MSVCWithRustGNU : ToolchainError("MSVC debugger cannot be used with GNU Rust toolchain.")
+        object GNUWithRustMSVC : ToolchainError("GNU debugger cannot be used with MSVC Rust toolchain.")
+        object WSLWithNonWSL : ToolchainError("<html>The local debugger cannot be used with WSL.<br>" +
+            "Use the <a href='https://www.jetbrains.com/help/clion/how-to-use-wsl-development-environment-in-product.html'>instructions</a> to configure WSL toolchain.</html>")
         class Other(message: String) : ToolchainError(message)
     }
 }
@@ -186,7 +189,7 @@ fun CargoRunStateBase.executeCommandLine(
     extensionManager.patchCommandLine(runConfiguration, environment, commandLine, context)
     extensionManager.patchCommandLineState(runConfiguration, environment, this, context)
 
-    val handler = RsKillableColoredProcessHandler(commandLine)
+    val handler = toolchain.startProcess(commandLine)
     ProcessTerminatedListener.attach(handler) // shows exit code upon termination
 
     extensionManager.attachExtensionsToProcess(runConfiguration, handler, environment, context)

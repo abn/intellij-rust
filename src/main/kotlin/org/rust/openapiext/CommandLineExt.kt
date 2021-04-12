@@ -26,7 +26,7 @@ fun GeneralCommandLine(path: Path, vararg args: String) = GeneralCommandLine(pat
 
 fun GeneralCommandLine.withWorkDirectory(path: Path?) = withWorkDirectory(path?.systemIndependentPath)
 
-fun GeneralCommandLine.execute(timeoutInMilliseconds: Int? = 1000): ProcessOutput? {
+fun GeneralCommandLine.execute(timeoutInMilliseconds: Int?): ProcessOutput? {
     val output = try {
         val handler = CapturingProcessHandler(this)
         LOG.info("Executing `$commandLineString`")
